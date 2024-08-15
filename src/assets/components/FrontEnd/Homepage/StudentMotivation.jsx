@@ -245,3 +245,4 @@ const App = () => (
 );
 
 export default App;
+//student motivation
