@@ -1,3 +1,5 @@
+// StudentDashboard
+
 import React, { useState, useEffect } from 'react';
 import { FaUser, FaPlus, FaCommentAlt, FaHeart, FaRegHeart } from 'react-icons/fa';
 import { MdPostAdd, MdOutlineBookmark } from 'react-icons/md';
