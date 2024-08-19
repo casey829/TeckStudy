@@ -1,0 +1,215 @@
+.dashboard-container {
+    display: flex;
+    font-family: 'Futura', sans-serif;
+    background-color: #f4f7f9;
+    height: 100vh;
+    flex-direction: column;
+  }
+  
+  .sidebar {
+    width: 220px;
+    background: #47474e;
+    border-right: 1px solid #e1e1e1;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .logo {
+    padding: 20px;
+    font-size: 24px;
+    font-weight: bold;
+  }
+  
+  .sidebar-item {
+    padding: 15px 20px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+  }
+  
+  
+  
+  .sidebar-icon {
+    margin-right: 10px;
+  }
+  
+  .sidebar-text {
+    font-size: 18px;
+  }
+  
+  .add-icon-container {
+    padding: 15px 20px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    margin-top: auto;
+  }
+  
+  .add-icon-container:hover {
+    background: #f4f7f9;
+  }
+  
+  .profile-section {
+    margin-top: auto;
+    padding: 15px 20px;
+    display: flex;
+    align-items: center;
+    border-top: 1px solid #e1e1e1;
+  }
+  
+  .main-content {
+    flex: 1;
+    padding: 20px;
+  }
+  
+  .greeting-section {
+    padding: 20px;
+    background: #ffffff;
+    border-bottom: 1px solid #e1e1e1;
+  }
+  
+  .greeting-section h1 {
+    margin: 0;
+    font-size: 24px;
+  }
+  
+  .greeting-section p {
+    color: #6b7280;
+  }
+  
+  .analytics-cards {
+    display: flex;
+    gap: 20px;
+    padding: 20px;
+    background: #ffffff;
+    border-bottom: 1px solid #e1e1e1;
+  }
+  
+  .card {
+    flex: 1;
+    background: #4f46e5;
+    color: #ffffff;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+  }
+  
+  .card h1 {
+    margin: 0;
+    font-size: 28px;
+  }
+  
+  .card p {
+    font-size: 30px;
+    margin: 0;
+    font-weight: bold;
+  }
+  
+  .tables {
+    padding: 20px;
+    display: flex;
+    gap: 20px;
+    flex-direction: column;
+  }
+  
+  .user-table, .content-table {
+    background: #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  th, td {
+    padding: 15px;
+    text-align: left;
+  }
+  
+  th {
+    background: #f4f7f9;
+  }
+  
+  tr:nth-child(even) {
+    background: #f9f9f9;
+  }
+  
+  button {
+    background: #4f46e5;
+    border: none;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-right: 5px;
+  }
+  
+  button:hover {
+    background: #3730a3;
+  }
+  
+  .modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .modal-content {
+    background: #ffffff;
+    padding: 20px;
+    border-radius: 8px;
+    width: 500px;
+    position: relative;
+  }
+  
+  .close-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 24px;
+    cursor: pointer;
+  }
+  
+  form label {
+    display: block;
+    margin-bottom: 15px;
+  }
+  
+  form input, form textarea, form select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #e1e1e1;
+    border-radius: 4px;
+    font-size: 16px;
+  }
+  
+  form textarea {
+    resize: vertical;
+  }
+  
+  button[type="submit"] {
+    background: #4f46e5;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    width: 100%;
+    margin-top: 10px;
+  }
+  
+  button[type="submit"]:hover {
+    background: #3730a3;
+  }
+  
