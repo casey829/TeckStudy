@@ -22,12 +22,14 @@ function AdminDashboard() {
     description: "",
     link: "",
     thumbnail: "",
-    file: null
+    file: null,
+    category: "" // Added category field
   });
   const [categoryData, setCategoryData] = useState({ name: "", description: "" });
   const [users, setUsers] = useState([]);
   const [contentList, setContentList] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [categories, setCategories] = useState([]); // To hold category data
   const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [role, setRole] = useState('Admin');
   const [totalUsers, setTotalUsers] = useState(0);
@@ -37,6 +39,8 @@ function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [flagReason, setFlagReason] = useState("");
+  const [contentId, setContentId] = useState("");
 
   useEffect(() => {
     const storedUserId = localStorage.getItem('user_id');
@@ -44,6 +48,7 @@ function AdminDashboard() {
     setLoading(true);
     fetchUsers();
     fetchContent();
+    fetchCategories();
     fetchAnalytics();
   }, []);
 
@@ -68,6 +73,16 @@ function AdminDashboard() {
       console.error("Error fetching content:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/admin/categories');
+      const data = await response.json();
+      setCategories(data);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
     }
   };
 
@@ -98,10 +113,13 @@ function AdminDashboard() {
       description: "",
       link: "",
       thumbnail: "",
-      file: null
+      file: null,
+      category: ""
     });
     setCategoryData({ name: "", description: "" });
     setSelectedCategory("");
+    setFlagReason("");
+    setContentId("");
   };
 
   const handleUserTypeChange = (e) => setUserType(e.target.value);
@@ -187,6 +205,7 @@ function AdminDashboard() {
         })
       });
       if (response.ok) {
+        fetchCategories();
         setMessage("Category added successfully.");
       } else {
         setMessage("Error adding category.");
@@ -223,7 +242,7 @@ function AdminDashboard() {
       const response = await fetch(`http://localhost:5000/admin/content/${contentId}/approve`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ approved_by: 'Admin' })
+        body: JSON.stringify({ approved_by: userId })
       });
       if (response.ok) {
         fetchContent();
@@ -238,10 +257,41 @@ function AdminDashboard() {
     }
   };
 
+  const handleFlagContent = (contentId) => {
+    setIsModalOpen(true);
+    setModalType("flag");
+    setContentId(contentId);
+  };
+
+  
+  const handleSubmitFlag = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const response = await fetch(`http://localhost:5000/admin/content/${contentId}/flag`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: flagReason })
+      });
+      if (response.ok) {
+        fetchContent();
+        setMessage("Content flagged successfully.");
+      } else {
+        setMessage("Error flagging content.");
+      }
+    } catch (error) {
+      console.error("Error flagging content:", error);
+    } finally {
+      setLoading(false);
+      handleCloseModal();
+    }
+  };
+
+
   const handleRemoveContent = async (contentId) => {
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:5000/admin/content/${contentId}`, {
+      const response = await fetch(`http://localhost:5000/staff/content/${contentId}`, {
         method: 'DELETE'
       });
       if (response.ok) {
@@ -257,21 +307,27 @@ function AdminDashboard() {
     }
   };
 
-  const handleSearch = (e) => setSearchTerm(e.target.value.toLowerCase());
+  {modalType === "flag" && (
+    <form onSubmit={handleSubmitFlag}>
+      <h2>Flag Content</h2>
+      <label>
+        Reason:
+        <textarea value={flagReason} onChange={(e) => setFlagReason(e.target.value)} required />
+      </label>
+      <button type="submit">Submit Flag</button>
+    </form>
+  )}
 
-  const filteredUsers = users.filter(user =>
-    user.username.toLowerCase().includes(searchTerm)
-  );
 
-  const filteredContent = contentList.filter(content =>
-    content.title.toLowerCase().includes(searchTerm)
-  );
+
+  const handleSearch = (e) => setSearchTerm(e.target.value);
+
+  const filteredUsers = users.filter(user => user.username.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredContent = contentList.filter(content => content.title.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
-    <div className="dashboard-container">
+    <div className="admin-dashboard">
       <div className="sidebar">
-        <div className="logo" >Admin Dashboard</div>
-        
         <nav>
           <ul>
             <li className="sidebar-item" onClick={() => window.location.href = '/'}>
@@ -282,7 +338,7 @@ function AdminDashboard() {
               <TiUserAdd className="sidebar-icon" />
               <span className="sidebar-text">Add User</span>
             </li>
-  
+          
             <li className="sidebar-item" onClick={() => { setModalType("category"); setIsModalOpen(true); }}>
               <GiToken className="sidebar-icon" />
               <span className="sidebar-text">Add Category</span>
@@ -321,7 +377,7 @@ function AdminDashboard() {
                   <th>Username</th>
                   <th>Email</th>
                   <th>Role</th>
-                  <th>Created </th>
+                  <th>Created</th>
                 </tr>
               </thead>
               <tbody>
@@ -331,28 +387,24 @@ function AdminDashboard() {
                     <td>{user.email}</td>
                     <td>{user.role}</td>
                     <td>{user.created_at}</td>
-
-                
+                    <td>
+                     
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
         </div>
-
-       
         <div className="content-list">
-          <br>
-          </br>
-          <br></br>
-          <br></br>
-          <h1>Content(s)</h1>
+          <h2>Content</h2>
           {loading ? <p>Loading...</p> : (
             <table>
               <thead>
                 <tr>
                   <th>Title</th>
                   <th>Description</th>
+                  <th>Category</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -361,35 +413,50 @@ function AdminDashboard() {
                   <tr key={content.id}>
                     <td>{content.title}</td>
                     <td>{content.description}</td>
-                  <td>
-  {!content.approved_by && (
-    <button
-      onClick={() => handleApproveContent(content.id)}
-      style={{
-        backgroundColor: 'green',
-      
-        padding: '8px 16px',
-        borderRadius: '4px',
-        cursor: 'pointer'
-      }}
-    >
-      Approve
-    </button>
-  )}
-  <button
-    onClick={() => handleRemoveContent(content.id)}
-    style={{
-      backgroundColor: 'red',
-    
-      padding: '8px 16px',
-      borderRadius: '4px',
-      cursor: 'pointer',
-    }}
-  >
-    Remove
-  </button>
-</td>
-
+                    <td>{content.category}</td>
+                    <td>
+                      {/* {!content.approved_by && (
+                        <button
+                          onClick={() => handleApproveContent(content.id)}
+                          style={{
+                            backgroundColor: 'green',
+                            color: 'white',
+                            padding: '8px 16px',
+                            borderRadius: '4px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <FcApprove /> Approve
+                        </button>
+                      )} */}
+                      <button
+                        onClick={() => handleFlagContent(content.id)}
+                        style={{
+                          backgroundColor: 'orange',
+                          color: 'white',
+                          padding: '8px 16px',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          marginLeft: '8px'
+                        }}
+                      >
+                        
+                        <CiFlag1 /> Flag
+                      </button>
+                      <button
+                        onClick={() => handleRemoveContent(content.id)}
+                        style={{
+                          backgroundColor: 'red',
+                          color: 'white',
+                          padding: '8px 16px',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          marginLeft: '8px'
+                        }}
+                      >
+                        <HiOutlineUserRemove /> Remove
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -398,7 +465,7 @@ function AdminDashboard() {
         </div>
       </div>
       <Modal isOpen={isModalOpen} onRequestClose={handleCloseModal} className="modal" overlayClassName="overlay">
-        <h2>{modalType === "user" ? "Add User" : modalType === "content" ? "Add Content" : "Add Category"}</h2>
+        <h2>{modalType === "user" ? "Add User" : modalType === "content" ? "Add Content" : modalType === "category" ? "Add Category" : ""}</h2>
         {modalType === "user" && (
           <form onSubmit={handleAddUser}>
             <label>
@@ -439,6 +506,15 @@ function AdminDashboard() {
               File:
               <input type="file" name="file" onChange={handleContentChange} />
             </label>
+            <label>
+              Category:
+              <select name="category" value={contentData.category} onChange={handleContentChange} required>
+                <option value="">Select Category</option>
+                {categories.map(category => (
+                  <option key={category.id} value={category.name}>{category.name}</option>
+                ))}
+              </select>
+            </label>
             <button type="submit">Add Content</button>
           </form>
         )}
@@ -456,6 +532,16 @@ function AdminDashboard() {
           </form>
         )}
         <button onClick={handleCloseModal}>Close</button>
+        {modalType === "flag" && (
+          <form onSubmit={handleSubmitFlag}>
+            <h2>Flag Content</h2>
+            <label>
+              Reason:
+              <textarea value={flagReason} onChange={(e) => setFlagReason(e.target.value)} required />
+            </label>
+            <button type="submit">Submit Flag</button>
+          </form>
+        )}
       </Modal>
       {message && <div className="message">{message}</div>}
     </div>

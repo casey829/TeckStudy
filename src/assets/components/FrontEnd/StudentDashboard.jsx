@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import './StudentDashboard.css'; // Import the CSS file for custom styles
+import './StudentDashboard.css'; // Import custom styles
+import Modal from 'react-modal';
+import { FaHeart, FaRegHeart, FaRegCommentDots } from 'react-icons/fa';
 
 const API_URL = 'http://localhost:5000'; // Update with your backend URL
+const defaultProfilePictureUrl = 'https://s.abcnews.com/images/Technology/AP_Sundar_Pichai_ml_150811_16x9_1600.jpg';
+
+Modal.setAppElement('#root');
 
 const StudentDashboard = () => {
   const [posts, setPosts] = useState([]);
@@ -19,12 +24,13 @@ const StudentDashboard = () => {
     email: '',
     password_hash: '',
     bio: '',
-    profile_picture_url: ''
+    profile_picture_url: defaultProfilePictureUrl,
   });
   const [categories, setCategories] = useState([]);
+  const [userCategories, setUserCategories] = useState([]);
   const [comments, setComments] = useState({});
   const [isModalOpen, setIsModalOpen] = useState('');
-  const [selectedPostId, setSelectedPostId] = useState(null);
+  const [selectedContentId, setSelectedContentId] = useState(null);
   const [userId, setUserId] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -36,13 +42,16 @@ const StudentDashboard = () => {
       fetchWishlist();
       fetchProfile();
       fetchCategories();
+      fetchUserCategories();
     }
   }, []);
 
   const fetchPosts = async () => {
     try {
       const response = await axios.get(`${API_URL}/students/content`);
-      setPosts(response.data);
+      // Filter posts where flagged is false
+      const filteredPosts = response.data.filter(post => !post.flagged);
+      setPosts(filteredPosts);
     } catch (error) {
       console.error('Failed to fetch posts:', error);
     }
@@ -58,10 +67,19 @@ const StudentDashboard = () => {
   };
 
   const fetchProfile = async () => {
+    const userId = localStorage.getItem('user_id');
+  
+    if (!userId) {
+      console.error('User ID not found in local storage.');
+      return;
+    }
+  
+    const url = `${API_URL}/students/profile/${userId}`;
+  
     try {
-      const response = await axios.get(`${API_URL}/students/profile`);
+      const response = await axios.get(url);
       setProfileData(response.data);
-      setUserId(response.data.id);
+      setUserId(userId); // Set userId from local storage
     } catch (error) {
       console.error('Failed to fetch profile:', error);
     }
@@ -76,10 +94,38 @@ const StudentDashboard = () => {
     }
   };
 
+  const fetchUserCategories = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/students/categories`);
+      setUserCategories(response.data);
+    } catch (error) {
+      console.error('Failed to fetch user categories:', error);
+    }
+  };
+
+  const fetchComments = async (contentId) => {
+    try {
+      const response = await axios.get(`${API_URL}/students/comments/${contentId}`);
+      setComments(prev => ({ ...prev, [contentId]: response.data }));
+    } catch (error) {
+      console.error('Failed to fetch comments:', error);
+    }
+  };
+
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
+  
+    const userId = localStorage.getItem('user_id');
+  
+    if (!userId) {
+      console.error('User ID not found in local storage.');
+      return;
+    }
+  
+    const url = `${API_URL}/students/profile/${userId}`;
+  
     try {
-      await axios.post(`${API_URL}/students/profile`, profileData);
+      await axios.patch(url, profileData);
       fetchProfile();
       setIsModalOpen('');
       setSuccessMessage('Profile updated successfully!');
@@ -118,36 +164,66 @@ const StudentDashboard = () => {
     }
   };
 
-  const handleAddToWishlist = async (postId) => {
+  const handleCreateProfile = async (e) => {
+    e.preventDefault();
+  
+    const userId = localStorage.getItem('user_id');
+  
+    if (!userId) {
+      console.error('User ID not found in local storage.');
+      return;
+    }
+  
+    const url = `${API_URL}/students/profile`;
+  
     try {
-      if (wishlist.find(item => item.content_id === postId)) {
-        await axios.delete(`${API_URL}/students/wishlist/${postId}`);
-        setWishlist(wishlist.filter(item => item.content_id !== postId));
+      await axios.post(url, { ...profileData, user_id: userId });
+      fetchProfile();
+      setIsModalOpen('');
+      setSuccessMessage('Profile created successfully!');
+    } catch (error) {
+      console.error('Failed to create profile:', error);
+    }
+  };
+
+  const handleAddToWishlist = async (contentId) => {
+    try {
+      if (wishlist.find(item => item.content_id === contentId)) {
+        await axios.delete(`${API_URL}/students/wishlist/${contentId}`);
+        setWishlist(wishlist.filter(item => item.content_id !== contentId));
+        setSuccessMessage('Removed from wishlist!');
       } else {
         if (!userId) {
           console.error('User ID is required to add to wishlist.');
           return;
         }
-        await axios.post(`${API_URL}/students/wishlist`, { user_id: userId, content_id: postId });
-        setWishlist([...wishlist, { content_id: postId }]);
+        await axios.post(`${API_URL}/students/wishlist`, { user_id: userId, content_id: contentId });
+        setWishlist([...wishlist, { content_id: contentId }]);
+        setSuccessMessage('Added to wishlist!');
       }
     } catch (error) {
       console.error('Failed to add/remove wishlist:', error);
     }
   };
 
-  const handleAddComment = async (postId) => {
+  const handleAddComment = async (contentId) => {
     try {
       if (!userId) {
         console.error('User ID is required to add a comment.');
         return;
       }
-      await axios.post(`${API_URL}/students/comments`, { content_id: postId, user_id: userId, text: comments[postId] });
-      fetchPosts();
-      setComments({ ...comments, [postId]: '' });
+      await axios.post(`${API_URL}/students/comments`, { content_id: contentId, user_id: userId, text: comments[contentId] });
+      fetchComments(contentId); // Refetch comments after adding
+      setComments({ ...comments, [contentId]: '' });
     } catch (error) {
       console.error('Failed to add comment:', error);
     }
+  };
+
+  const openCommentsModal = (contentId) => {
+    setSelectedContentId(contentId);
+    fetchComments(contentId);
+    setIsModalOpen('comments');
   };
 
   return (
@@ -155,19 +231,24 @@ const StudentDashboard = () => {
       {/* Sidebar */}
       <aside className="sidebar-left">
         <div className="profile-summary">
-          <img src={profileData.profile_picture_url || 'default-avatar.jpg'} alt="Profile" />
+          <img 
+            src={profileData.profile_picture_url || 'default-avatar.jpg'} 
+            alt="Profile" 
+            className="profile-pic" 
+          />
           <h3>{profileData.username}</h3>
-          <button className="button-primary" onClick={() => setIsModalOpen('profile')}>Edit Profile</button>
-          <button className="button-primary" onClick={() => setIsModalOpen('post')}>Add Post</button>
-        </div>
-        <nav className="sidebar-nav">
-          <ul>
-            <li><button onClick={() => setIsModalOpen('profile')}>Edit Profile</button></li>
-            <li><button onClick={() => setIsModalOpen('post')}>Add Post</button></li>
-            <li><button onClick={() => fetchWishlist()}>Refresh Wishlist</button></li>
-          </ul>
           
-        </nav>
+          <button className="button-primary" onClick={() => setIsModalOpen('profile')}>Edit Profile</button>
+          <button className="button-primary" onClick={() => setIsModalOpen('post')}>New Post</button>
+        </div>
+        <div className="subscribed-categories">
+          <h3>Subscribed Categories</h3>
+          <ul>
+            {userCategories.map(cat => (
+              <li key={cat.id}>{cat.name}</li>
+            ))}
+          </ul>
+        </div>
       </aside>
 
       {/* Main Content */}
@@ -181,155 +262,201 @@ const StudentDashboard = () => {
           </div>
         )}
 
-        {/* Profile Section */}
-        {isModalOpen === 'profile' && (
-          <div className="modal">
-            <div className="modal-content">
-              <button className="close-btn" onClick={() => setIsModalOpen('')}>×</button>
-              <h2>Edit Profile</h2>
-              <form onSubmit={handleProfileUpdate}>
-                <label>
-                  Username:
-                  <input 
-                    type="text" 
-                    value={profileData.username} 
-                    onChange={e => setProfileData({ ...profileData, username: e.target.value })}
-                  />
-                </label>
-                <label>
-                  Email:
-                  <input 
-                    type="email" 
-                    value={profileData.email} 
-                    onChange={e => setProfileData({ ...profileData, email: e.target.value })}
-                  />
-                </label>
-                <label>
-                  Password:
-                  <input 
-                    type="password" 
-                    value={profileData.password_hash} 
-                    onChange={e => setProfileData({ ...profileData, password_hash: e.target.value })}
-                  />
-                </label>
-                <label>
-                  Bio:
-                  <textarea 
-                    value={profileData.bio} 
-                    onChange={e => setProfileData({ ...profileData, bio: e.target.value })}
-                  />
-                </label>
-                <label>
-                  Profile Picture URL:
-                  <input 
-                    type="text" 
-                    value={profileData.profile_picture_url} 
-                    onChange={e => setProfileData({ ...profileData, profile_picture_url: e.target.value })}
-                  />
-                </label>
-                <button type="submit" className="button-primary">Save</button>
-              </form>
-            </div>
+        {/* Profile Modal */}
+        <Modal
+          isOpen={isModalOpen === 'profile'}
+          onRequestClose={() => setIsModalOpen('')}
+          contentLabel="Edit Profile"
+          className="modal"
+          overlayClassName="modal-overlay"
+        >
+          <div className="modal-content">
+            <button className="close-btn" onClick={() => setIsModalOpen('')}>×</button>
+            <h2>Edit Profile</h2>
+            <form onSubmit={handleProfileUpdate}>
+              <label>
+                Username:
+                <input 
+                  type="text" 
+                  value={profileData.username} 
+                  onChange={e => setProfileData({ ...profileData, username: e.target.value })}
+                />
+              </label>
+              <label>
+                Email:
+                <input 
+                  type="email" 
+                  value={profileData.email} 
+                  onChange={e => setProfileData({ ...profileData, email: e.target.value })}
+                />
+              </label>
+              <label>
+                Password:
+                <input 
+                  type="password" 
+                  value={profileData.password_hash} 
+                  onChange={e => setProfileData({ ...profileData, password_hash: e.target.value })}
+                />
+              </label>
+              <label>
+                Bio:
+                <textarea 
+                  value={profileData.bio} 
+                  onChange={e => setProfileData({ ...profileData, bio: e.target.value })}
+                />
+              </label>
+              <label>
+                Profile Picture URL:
+                <input 
+                  type="text" 
+                  value={profileData.profile_picture_url} 
+                  onChange={e => setProfileData({ ...profileData, profile_picture_url: e.target.value })}
+                />
+              </label>
+              <button type="submit" className="button-primary">Save</button>
+            </form>
           </div>
-        )}
+        </Modal>
 
-        {/* Post Section */}
-        {isModalOpen === 'post' && (
-          <div className="modal">
-            <div className="modal-content">
-              <button className="close-btn" onClick={() => setIsModalOpen('')}>×</button>
-              <h2>Add New Post</h2>
-              <form onSubmit={handleAddPost}>
-                <label>
-                  Title:
-                  <input 
-                    type="text" 
-                    value={newPost.title} 
-                    onChange={e => setNewPost({ ...newPost, title: e.target.value })}
-                    required
-                  />
-                </label>
-                <label>
-                  Description:
-                  <textarea 
-                    value={newPost.description} 
-                    onChange={e => setNewPost({ ...newPost, description: e.target.value })}
-                  />
-                </label>
-                <label>
-                  Content URL:
-                  <input 
-                    type="text" 
-                    value={newPost.content_url} 
-                    onChange={e => setNewPost({ ...newPost, content_url: e.target.value })}
-                    required
-                  />
-                </label>
-                <label>
-                  Content Type:
-                  <select 
-                    value={newPost.content_type} 
-                    onChange={e => setNewPost({ ...newPost, content_type: e.target.value })}
-                    required
-                  >
-                    <option value="">Select Type</option>
-                    <option value="video">Video</option>
-                    <option value="article">Article</option>
-                    <option value="image">Image</option>
-                  </select>
-                </label>
-                <label>
-                  Category:
-                  <select 
-                    value={newPost.category_id} 
-                    onChange={e => setNewPost({ ...newPost, category_id: e.target.value })}
-                  >
-                    <option value="">Select Category</option>
-                    {categories.map(cat => (
-                      <option key={cat.id} value={cat.id}>{cat.name}</option>
-                    ))}
-                  </select>
-                </label>
-                <button type="submit" className="button-primary">Add Post</button>
-              </form>
-            </div>
+        {/* Add Post Modal */}
+        <Modal
+          isOpen={isModalOpen === 'post'}
+          onRequestClose={() => setIsModalOpen('')}
+          contentLabel="Add Post"
+          className="modal"
+          overlayClassName="modal-overlay"
+        >
+          <div className="modal-content">
+            <button className="close-btn" onClick={() => setIsModalOpen('')}>×</button>
+            <h2>Add New Post</h2>
+            <form onSubmit={handleAddPost}>
+              <label>
+                Title:
+                <input 
+                  type="text" 
+                  value={newPost.title} 
+                  onChange={e => setNewPost({ ...newPost, title: e.target.value })}
+                  required
+                />
+              </label>
+              <label>
+                Description:
+                <textarea 
+                  value={newPost.description} 
+                  onChange={e => setNewPost({ ...newPost, description: e.target.value })}
+                />
+              </label>
+              <label>
+                Content URL:
+                <input 
+                  type="text" 
+                  value={newPost.content_url} 
+                  onChange={e => setNewPost({ ...newPost, content_url: e.target.value })}
+                  required
+                />
+              </label>
+              <label>
+                Content Type:
+                <select 
+                  value={newPost.content_type} 
+                  onChange={e => setNewPost({ ...newPost, content_type: e.target.value })}
+                  required
+                >
+                  <option value="">Select Type</option>
+                  <option value="video">Video</option>
+                  <option value="article">Article</option>
+                  <option value="image">Image</option>
+                </select>
+              </label>
+              <label>
+                Category:
+                <select 
+                  value={newPost.category_id} 
+                  onChange={e => setNewPost({ ...newPost, category_id: e.target.value })}
+                >
+                  <option value="">Select Category</option>
+                  {categories.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  ))}
+                </select>
+              </label>
+              <button type="submit" className="button-primary">Add Post</button>
+            </form>
           </div>
-        )}
+        </Modal>
+
+        {/* Comments Modal */}
+        <Modal
+          isOpen={isModalOpen === 'comments'}
+          onRequestClose={() => setIsModalOpen('')}
+          contentLabel="Post Details and Comments"
+          className="modal"
+          overlayClassName="modal-overlay"
+        >
+          <div className="modal-content">
+            <button className="close-btn" onClick={() => setIsModalOpen('')}>×</button>
+            <h2>Post Details and Comments</h2>
+            {posts.find(post => post.id === selectedContentId) && (
+              <div>
+                <h3>{posts.find(post => post.id === selectedContentId).title}</h3>
+                <p>{posts.find(post => post.id === selectedContentId).description}</p>
+                <a href={posts.find(post => post.id === selectedContentId).content_url} target="_blank" rel="noopener noreferrer">View Content</a>
+                <div className="comments-section">
+                  <input 
+                    type="text" 
+                    value={comments[selectedContentId]?.text || ''} 
+                    onChange={e => setComments({ ...comments, [selectedContentId]: { text: e.target.value } })}
+                    placeholder="Add a comment"
+                  />
+                  <button 
+                    className="button-primary"
+                    onClick={() => handleAddComment(selectedContentId)}
+                  >
+                    Add Comment
+                  </button>
+                  <ul>
+                    {/* Display Comments */}
+                    {comments[selectedContentId]?.map(comment => (
+                      <li key={comment.id}>{comment.text}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+          </div>
+        </Modal>
 
         {/* Posts List */}
         <section className="posts-list">
           <h2>Posts</h2>
-          {posts.map(post => (
-            <div key={post.id} className="post">
-              <h3>{post.title}</h3>
-              <p>{post.description}</p>
-              <a href={post.content_url} target="_blank" rel="noopener noreferrer">View Content</a>
-              <button 
-                className={`button-primary ${wishlist.find(item => item.content_id === post.id) ? 'in-wishlist' : ''}`}
-                onClick={() => handleAddToWishlist(post.id)}
-              >
-                {wishlist.find(item => item.content_id === post.id) ? 'Remove from Wishlist' : 'Add to Wishlist'}
-              </button>
-              <div className="comments-section">
-                <h4>Comments</h4>
-                <input 
-                  type="text" 
-                  value={comments[post.id] || ''} 
-                  onChange={e => setComments({ ...comments, [post.id]: e.target.value })}
-                  placeholder="Add a comment"
-                />
-                <button 
-                  className="button-primary"
-                  onClick={() => handleAddComment(post.id)}
-                >
-                  Add Comment
-                </button>
-                <ul>
-                  {/* Display Comments */}
-                </ul>
+          <div className="posts-grid">
+            {posts.map(post => (
+              <div key={post.id} className="post-card">
+                <div className="post-content">
+                  <h3 className="post-title">
+                    {post.title}
+                    <span className="post-date">{new Date(post.created_at).toLocaleDateString()}</span>
+                  </h3>
+                  <p>{post.description}</p>
+                  <a href={post.content_url} target="_blank" rel="noopener noreferrer" className="show-more">Show more</a>
+                </div>
+                <div className="post-actions">
+                  <button 
+                    className={`wishlist-btn ${wishlist.find(item => item.content_id === post.id) ? 'in-wishlist' : ''}`}
+                    onClick={() => handleAddToWishlist(post.id)}
+                  >
+                    {wishlist.find(item => item.content_id === post.id) ? <FaHeart /> : <FaRegHeart />}
+                  </button>
+                  <button 
+                    className="comments-btn"
+                    onClick={() => openCommentsModal(post.id)}
+                  >
+                    <FaRegCommentDots />
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </section>
       </main>
     </div>

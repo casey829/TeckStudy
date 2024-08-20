@@ -1,6 +1,6 @@
 import React from 'react';
 
-function CommentsTable({ comments, onDelete }) {
+function CommentsTable({ comments, onDeleteComment }) {
   const tableStyle = {
     width: '100%',
     borderCollapse: 'collapse',
@@ -39,19 +39,13 @@ function CommentsTable({ comments, onDelete }) {
               <tr key={comment.id}>
                 <td style={tdStyle}>{comment.id}</td>
                 <td style={tdStyle}>{comment.content_id}</td>
-                <td style={tdStyle}>{comment.user}</td>
+                <td style={tdStyle}>{comment.user_id}</td>
                 <td style={tdStyle}>{comment.text}</td>
-                <td style={tdStyle}>{new Date(comment.date).toLocaleDateString()}</td>
+                <td style={tdStyle}>{new Date(comment.created_at).toLocaleDateString()}</td>
                 <td style={tdStyle}>
+                
                   <button
-                    onClick={() => alert(`Edit comment ${comment.id}`)}
-                    style={{ marginRight: '10px', backgroundColor: '#007bff', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}
-                    aria-label={`Edit Comment ${comment.id}`}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => onDelete(comment.id)}
+                    onClick={() => onDeleteComment(comment.id)}
                     style={{ backgroundColor: '#dc3545', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}
                     aria-label={`Delete Comment ${comment.id}`}
                   >

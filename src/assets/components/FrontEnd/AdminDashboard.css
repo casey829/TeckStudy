@@ -1,3 +1,6 @@
+body {
+  font-family: 'Futura', sans-serif; /* Use a fallback font in case Futura isn't available */
+}
 .dashboard-container {
     display: flex;
     font-family: 'Futura', sans-serif;

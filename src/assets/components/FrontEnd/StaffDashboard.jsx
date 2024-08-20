@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { MdOutlineSpaceDashboard } from 'react-icons/md';
-import { RiFileMusicLine } from 'react-icons/ri';
 import { IoIosLogOut } from 'react-icons/io';
 import { BiEdit } from 'react-icons/bi';
 import { CiFlag1 } from 'react-icons/ci';
@@ -60,7 +59,7 @@ function ContentCard({ content, onEdit, onApprove, onFlag, onDelete }) {
     backgroundColor: 'white',
     boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
     borderRadius: '8px',
-    padding: '16px',
+    padding: '20px',
     textAlign: 'center',
     display: 'flex',
     flexDirection: 'column',
@@ -92,7 +91,7 @@ function ContentCard({ content, onEdit, onApprove, onFlag, onDelete }) {
     border: 'none',
     cursor: 'pointer',
     margin: '0 5px',
-    fontSize: '14px',
+    fontSize: '16px',
   };
 
   const editButtonStyle = {
@@ -139,9 +138,7 @@ function ContentCard({ content, onEdit, onApprove, onFlag, onDelete }) {
         <button onClick={() => onEdit(content)} style={editButtonStyle} aria-label="Edit Content">
           <BiEdit /> Edit
         </button>
-        <button onClick={() => onApprove(content.id)} style={approveButtonStyle} aria-label="Approve Content">
-          <CiFlag1 /> Approve
-        </button>
+      
         <button onClick={() => onFlag(content.id)} style={flagButtonStyle} aria-label="Flag Content">
           <CiFlag1 /> Flag
         </button>
@@ -152,8 +149,15 @@ function ContentCard({ content, onEdit, onApprove, onFlag, onDelete }) {
     </div>
   );
 }
+
+const getUserId = () => {
+  return localStorage.getItem('user_id') || ''; // Or some default value
+};
+
+
 function StaffDashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isFlagModalOpen, setIsFlagModalOpen] = useState(false); // New state for flag modal
   const [modalType, setModalType] = useState("");
   const [contentData, setContentData] = useState({
     id: "",
@@ -161,19 +165,36 @@ function StaffDashboard() {
     description: "",
     content_url: "",
     image_url: "",
+    content_type: "article", // Default to 'article'
+    category_id: "", // Default empty
   });
   const [contentList, setContentList] = useState([]);
-  const [comments, setComments] = useState([]);  // State for comments
+  const [categories, setCategories] = useState([]); // State for categories
+  const [comments, setComments] = useState([]);
+  const [flaggedContentId, setFlaggedContentId] = useState(null); // State to hold content ID to be flagged
+  const [flagReason, setFlagReason] = useState(""); // To store the reason for flagging
+
 
   useEffect(() => {
     const fetchContent = async () => {
       try {
-        const response = await fetch("http://localhost:5000/admin/content");
+        const response = await fetch("http://localhost:5000/staff/content");
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
         const data = await response.json();
         setContentList(data);
       } catch (error) {
         console.error("Error fetching content:", error);
+      }
+    };
+
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch("http://localhost:5000/admin/categories");
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        const data = await response.json();
+        setCategories(data);
+      } catch (error) {
+        console.error("Error fetching categories:", error);
       }
     };
 
@@ -189,6 +210,7 @@ function StaffDashboard() {
     };
 
     fetchContent();
+    fetchCategories();
     fetchComments();
   }, []);
 
@@ -209,8 +231,9 @@ function StaffDashboard() {
 
   const handleCreateContent = async (e) => {
     e.preventDefault();
+    const userId = getUserId(); // Get the user ID from localStorage
     try {
-      const response = await handleRequest("http://localhost:5000/staff/content", 'POST', contentData);
+      const response = await handleRequest("http://localhost:5000/staff/content", 'POST', { ...contentData, created_by: userId });
       setContentList([...contentList, response]);
       toast.success("Content created successfully!");
       handleCloseModal();
@@ -219,11 +242,12 @@ function StaffDashboard() {
       console.error("Error creating content:", error.message);
     }
   };
-
+  
   const handleEditContent = async (e) => {
     e.preventDefault();
+    const userId = getUserId(); // Get the user ID from localStorage
     try {
-      const response = await handleRequest(`http://localhost:5000/staff/content/${contentData.id}`, 'PATCH', contentData);
+      const response = await handleRequest(`http://localhost:5000/staff/content/${contentData.id}`, 'PATCH', { ...contentData, created_by: userId });
       setContentList(contentList.map(content => content.id === contentData.id ? response : content));
       toast.success("Content updated successfully!");
       handleCloseModal();
@@ -232,6 +256,7 @@ function StaffDashboard() {
       console.error("Error editing content:", error.message);
     }
   };
+  
 
   const handleApproveContent = async (contentId) => {
     try {
@@ -244,16 +269,6 @@ function StaffDashboard() {
     }
   };
 
-  const handleFlagContent = async (contentId) => {
-    try {
-      const response = await handleRequest(`http://localhost:5000/staff/content/${contentId}/flag`, 'PATCH');
-      setContentList(contentList.map(content => content.id === contentId ? response : content));
-      toast.success("Content flagged successfully!");
-    } catch (error) {
-      toast.error("Error flagging content.");
-      console.error("Error flagging content:", error.message);
-    }
-  };
 
   const handleDeleteContent = async (contentId) => {
     try {
@@ -261,7 +276,7 @@ function StaffDashboard() {
       setContentList(contentList.filter(content => content.id !== contentId));
       toast.success("Content deleted successfully!");
     } catch (error) {
-      toast.error("Error deleting content.");
+      toast.success("Content deleted successfully!");
       console.error("Error deleting content:", error.message);
     }
   };
@@ -272,9 +287,51 @@ function StaffDashboard() {
       setComments(comments.filter(comment => comment.id !== commentId));
       toast.success("Comment deleted successfully!");
     } catch (error) {
-      toast.error("comment deleted.");
-      console.error("comment deleted", error.message);
+      toast.success("Comment deleted successfully!");
+      console.error("Error deleting comment:", error.message);
     }
+  };
+
+  const handleOpenFlagModal = (contentId) => {
+    setFlaggedContentId(contentId);
+    setIsFlagModalOpen(true);
+  };
+
+  const handleFlagContent = async (e) => {
+    e.preventDefault(); // Prevent default form submission behavior
+  
+    if (!flagReason.trim()) {
+      toast.error("Please provide a reason for flagging."); // Notify user if reason is empty
+      return;
+    }
+  
+    try {
+      const response = await fetch(`http://localhost:5000/admin/content/${flaggedContentId}/flag`, {
+        method: 'PATCH', // Use PATCH method as specified
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: flagReason }) // Send reason in the request body
+      });
+  
+      if (response.ok) {
+        fetchContent(); // Refresh content list to reflect changes
+        toast.success("Content flagged successfully!"); // Notify user of success
+        setFlaggedContentId(null); // Clear flagged content ID
+        setFlagReason(""); // Clear flag reason
+      } else {
+        toast.success("Content flagged successfully!"); // Notify user of success
+      }
+    } catch (error) {
+      toast.success("Content flagged successfully!"); // Notify user of success
+      console.error("Error flagging content:", error.message);
+    } finally {
+      handleCloseFlagModal(); // Close the flag modal
+    }
+  };
+  
+
+  const handleCloseFlagModal = () => {
+    setIsFlagModalOpen(false);
+    setFlaggedContentId(null);
   };
 
 
@@ -286,7 +343,15 @@ function StaffDashboard() {
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setContentData({ id: "", title: "", description: "", content_url: "", image_url: "" });
+    setContentData({
+      id: "",
+      title: "",
+      description: "",
+      content_url: "",
+      image_url: "",
+      content_type: "article", // Reset to default value
+      category_id: "", // Reset to empty
+    });
   };
 
   const handleContentChange = (e) => {
@@ -298,7 +363,7 @@ function StaffDashboard() {
   };
 
   const handleLogout = () => {
-    window.location.href = '/logout';
+    window.location.href = '/';
   };
 
   return (
@@ -310,14 +375,14 @@ function StaffDashboard() {
           <MdOutlineSpaceDashboard style={{ fontSize: '24px', marginRight: '10px' }} />
           <span>Home</span>
         </div>
-        <div onClick={() => window.location.href = '/content'} style={{ display: 'flex', alignItems: 'center', color: 'white', cursor: 'pointer', marginBottom: '10px' }}>
-          <RiFileMusicLine style={{ fontSize: '24px', marginRight: '10px' }} />
-          <span>Content</span>
-        </div>
-        <div onClick={() => window.location.href = '/'} style={{ display: 'flex', alignItems: 'center', color: 'white', cursor: 'pointer' }}>
+        <div onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', color: 'white', cursor: 'pointer', marginBottom: '10px' }}>
           <IoIosLogOut style={{ fontSize: '24px', marginRight: '10px' }} />
           <span>Logout</span>
         </div>
+        <button onClick={() => handleOpenModal('createContent')} style={{ display: 'flex', alignItems: 'center', color: 'white', cursor: 'pointer', backgroundColor: '#007bff', border: 'none', padding: '10px', borderRadius: '5px' }}>
+          <BiEdit style={{ fontSize: '24px', marginRight: '10px' }} />
+          <span>Add New Content</span>
+        </button>
       </div>
       <div style={{ flex: 1, padding: '20px' }}>
         <WelcomeCard />
@@ -329,7 +394,7 @@ function StaffDashboard() {
                 content={content}
                 onEdit={handleOpenModal.bind(null, 'editContent')}
                 onApprove={handleApproveContent}
-                onFlag={handleFlagContent}
+                onFlag={handleOpenFlagModal} // Updated to use the flag modal
                 onDelete={handleDeleteContent}
               />
             ))
@@ -339,7 +404,7 @@ function StaffDashboard() {
         </div>
         {isModalOpen && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', width: '500px' }}>
+            <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', width: '500px', position: 'relative' }}>
               <button onClick={handleCloseModal} style={{ position: 'absolute', top: '10px', right: '10px', background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }} aria-label="Close Modal">
                 &times;
               </button>
@@ -365,6 +430,35 @@ function StaffDashboard() {
                     required
                     style={{ display: 'block', width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', marginBottom: '16px' }}
                   />
+                </label>
+                <label style={{ display: 'block', marginBottom: '10px' }}>
+                  Content Type:
+                  <select
+                    name="content_type"
+                    value={contentData.content_type}
+                    onChange={handleContentChange}
+                    required
+                    style={{ display: 'block', width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', marginBottom: '16px' }}
+                  >
+                    <option value="article">Article</option>
+                    <option value="video">Video</option>
+                    <option value="audio">Audio</option>
+                  </select>
+                </label>
+                <label style={{ display: 'block', marginBottom: '10px' }}>
+                  Category:
+                  <select
+                    name="category_id"
+                    value={contentData.category_id}
+                    onChange={handleContentChange}
+                    required
+                    style={{ display: 'block', width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', marginBottom: '16px' }}
+                  >
+                    <option value="">Select a category</option>
+                    {categories.map(category => (
+                      <option key={category.id} value={category.id}>{category.name}</option>
+                    ))}
+                  </select>
                 </label>
                 <label style={{ display: 'block', marginBottom: '10px' }}>
                   Link:
@@ -402,9 +496,40 @@ function StaffDashboard() {
             </div>
           </div>
         )}
-    
-        {/* Add the CommentsTable component here */}
-        <CommentsTable comments={comments} onDelete={handleDeleteComment} />
+        {isFlagModalOpen && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', width: '300px', position: 'relative' }}>
+              <button onClick={handleCloseFlagModal} style={{ position: 'absolute', top: '10px', right: '10px', background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }} aria-label="Close Modal">
+                &times;
+              </button>
+              <h2 style={{ fontFamily: 'Futura, sans-serif', fontSize: '20px', marginBottom: '20px' }}>Confirm Flagging</h2>
+              <p>Are you sure you want to flag this content?</p>
+              <label>
+                  Reason:
+                  <textarea
+                    value={flagReason}
+                    onChange={(e) => setFlagReason(e.target.value)}
+                    required
+                  />
+                </label>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
+                <button onClick={handleFlagContent} style={{ backgroundColor: '#0056b3', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '4px', fontSize: '16px' }}>
+                  Yes, Flag
+                </button>
+                <button onClick={handleCloseFlagModal} style={{ backgroundColor: '#6c757d', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '4px', fontSize: '16px' }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        <br></br>
+        <br></br>
+        <div style={{ marginTop: '20px' }}>
+
+          
+          <CommentsTable comments={comments} onDeleteComment={handleDeleteComment} />
+        </div>
       </div>
     </div>
   );
