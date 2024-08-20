@@ -200,3 +200,29 @@ textarea {
   color: #666; /* Optional: Light gray color for the date */
   margin-left: auto; /* Push the date to the far right */
 }
+/* StudentDashboard.css */
+
+.subscribe-btn {
+  background-color: #4caf50; /* Default green color */
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 14px;
+  margin: 10px;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: background-color 0.3s ease;
+  /* Adjust position */
+  margin-left: 10px;
+}
+
+.subscribe-btn.subscribed {
+  background-color: #f44336; /* Red color for unsubscribed */
+}
+
+.subscribe-btn:hover {
+  opacity: 0.8;
+}

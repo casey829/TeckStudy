@@ -7,6 +7,8 @@ import { FaRegTrashAlt } from 'react-icons/fa';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import CommentsTable from './CommentsTable';  // Import the new component
+import { FaThumbsUp, FaThumbsDown } from 'react-icons/fa';  // Import thumbs up icon
+
 
 function WelcomeCard() {
   const cardStyle = {
@@ -54,7 +56,28 @@ function WelcomeCard() {
   );
 }
 
-function ContentCard({ content, onEdit, onApprove, onFlag, onDelete }) {
+function ContentCard({ content, onEdit, onApprove, onFlag, onDelete , onLikeDislike}) {
+
+  const [liked, setLiked] = useState(false); // Track if the content is liked
+  const [disliked, setDisliked] = useState(false); // Track if the content is disliked
+
+  // Effect to initialize like/dislike status
+  useEffect(() => {
+    // Assuming `content` has a property indicating whether it is liked/disliked by the user
+    setLiked(content.liked);
+    setDisliked(content.disliked);
+  }, [content]);
+
+  const handleLikeDislike = async () => {
+    try {
+      const actionType = liked ? 'dislike' : 'like';
+      await onLikeDislike(content.id, actionType);
+      setLiked(!liked);
+      setDisliked(false); // Reset dislike when liked
+    } catch (error) {
+      toast.error("Error processing like/dislike.");
+    }
+  };
   const cardStyle = {
     backgroundColor: 'white',
     boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
@@ -118,6 +141,12 @@ function ContentCard({ content, onEdit, onApprove, onFlag, onDelete }) {
     color: 'white',
   };
 
+  const likeDislikeButtonStyle = {
+    ...buttonStyle,
+    backgroundColor: '#17a2b8',
+    color: 'white',
+  };
+
   return (
     <div style={cardStyle}>
       <img
@@ -144,6 +173,9 @@ function ContentCard({ content, onEdit, onApprove, onFlag, onDelete }) {
         </button>
         <button onClick={() => onDelete(content.id)} style={deleteButtonStyle} aria-label="Delete Content">
           <FaRegTrashAlt /> Delete
+        </button>
+        <button onClick={handleLikeDislike} style={likeDislikeButtonStyle} aria-label="Like/Dislike Content">
+          {liked ? <FaThumbsDown /> : <FaThumbsUp />} {liked ? 'Dislike' : 'Like'}
         </button>
       </div>
     </div>
@@ -214,17 +246,23 @@ function StaffDashboard() {
     fetchComments();
   }, []);
 
-  const handleRequest = async (url, method, body = null) => {
+  const handleRequest = async (url, method, body) => {
     try {
       const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: body ? JSON.stringify(body) : null,
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
       });
-      if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-      return await response.json();
+  
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP error! Status: ${response.status}, Details: ${errorText}`);
+      }
+      return response.json();
     } catch (error) {
-      console.error(`Error with ${method} request:`, error);
+      console.error("Error in handleRequest:", error);
       throw error;
     }
   };
@@ -291,6 +329,49 @@ function StaffDashboard() {
       console.error("Error deleting comment:", error.message);
     }
   };
+
+  const handleLikeDislikeContent = async (contentId, actionType) => {
+    try {
+      // Validate actionType
+      const validActionTypes = ['like', 'dislike'];
+      if (!validActionTypes.includes(actionType)) {
+        throw new Error("Invalid action type provided.");
+      }
+  
+      // Retrieve user_id from localStorage
+      const userId = localStorage.getItem('user_id');
+      if (!userId) {
+        toast.error("User ID not found.");
+        return;
+      }
+  
+      // Prepare request body with user_id and action_type
+      const requestBody = {
+        user_id: userId,
+        action_type: actionType // 'like' or 'dislike'
+      };
+  
+      // Make the API request with the request body
+      const response = await handleRequest(
+        `https://motivation-ptatform-1.onrender.com/staff/content/${contentId}/like_dislike`,
+        'POST',
+        requestBody
+      );
+  
+      // Display success message
+      toast.success(response.message || "Content action processed successfully!");
+  
+      // Optionally update content list or state here if needed
+      setContentList(contentList.map(content => content.id === contentId ? { ...content, liked: actionType === 'like', disliked: actionType === 'dislike' } : content));
+  
+    } catch (error) {
+      // Display error message
+      toast.error("Error processing content action.");
+      console.error("Error processing content action:", error);
+    }
+  };
+  
+  
 
   const handleOpenFlagModal = (contentId) => {
     setFlaggedContentId(contentId);
@@ -396,7 +477,8 @@ function StaffDashboard() {
                 onApprove={handleApproveContent}
                 onFlag={handleOpenFlagModal} // Updated to use the flag modal
                 onDelete={handleDeleteContent}
-              />
+                onLikeDislike={handleLikeDislikeContent}
+                />
             ))
           ) : (
             <p>No content available.</p>

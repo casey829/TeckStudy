@@ -49,7 +49,6 @@ const StudentDashboard = () => {
   const fetchPosts = async () => {
     try {
       const response = await axios.get(`${API_URL}/students/content`);
-      // Filter posts where flagged is false
       const filteredPosts = response.data.filter(post => !post.flagged);
       setPosts(filteredPosts);
     } catch (error) {
@@ -59,8 +58,10 @@ const StudentDashboard = () => {
 
   const fetchWishlist = async () => {
     try {
-      const response = await axios.get(`${API_URL}/students/wishlist`);
-      setWishlist(response.data);
+      if (userId) {
+        const response = await axios.get(`${API_URL}/students/wishlist/${userId}`);
+        setWishlist(response.data);
+      }
     } catch (error) {
       console.error('Failed to fetch wishlist:', error);
     }
@@ -68,18 +69,13 @@ const StudentDashboard = () => {
 
   const fetchProfile = async () => {
     const userId = localStorage.getItem('user_id');
-  
     if (!userId) {
       console.error('User ID not found in local storage.');
       return;
     }
-  
-    const url = `${API_URL}/students/profile/${userId}`;
-  
     try {
-      const response = await axios.get(url);
+      const response = await axios.get(`${API_URL}/students/profile/${userId}`);
       setProfileData(response.data);
-      setUserId(userId); // Set userId from local storage
     } catch (error) {
       console.error('Failed to fetch profile:', error);
     }
@@ -96,17 +92,49 @@ const StudentDashboard = () => {
 
   const fetchUserCategories = async () => {
     try {
-      const response = await axios.get(`${API_URL}/students/categories`);
-      setUserCategories(response.data);
+      if (userId) {
+        const response = await axios.get(`${API_URL}/students/user-categories/${userId}`);
+        setUserCategories(response.data);
+      }
     } catch (error) {
       console.error('Failed to fetch user categories:', error);
+    }
+  };
+
+  const handleSubscribe = async (categoryId) => {
+    try {
+      if (!userId) {
+        console.error('User ID is required.');
+        return;
+      }
+
+      const category = categories.find(cat => cat.id === categoryId);
+      const isSubscribed = userCategories.some(cat => cat.id === categoryId);
+
+      if (isSubscribed) {
+        await axios.post(`${API_URL}/students/categories/unsubscribe`, {
+          user_id: userId,
+          category_id: categoryId,
+        });
+        setUserCategories(userCategories.filter(cat => cat.id !== categoryId));
+        setSuccessMessage('Unsubscribed from category successfully!');
+      } else {
+        await axios.post(`${API_URL}/students/categories/subscribe`, {
+          user_id: userId,
+          category_id: categoryId,
+        });
+        setUserCategories([...userCategories, category]);
+        setSuccessMessage('Subscribed to category successfully!');
+      }
+    } catch (error) {
+      console.error('Failed to handle subscription:', error);
     }
   };
 
   const fetchComments = async (contentId) => {
     try {
       const response = await axios.get(`${API_URL}/students/comments/${contentId}`);
-      setComments(prev => ({ ...prev, [contentId]: response.data }));
+      setComments(prev => ({ ...prev, [contentId]: response.data || [] }));
     } catch (error) {
       console.error('Failed to fetch comments:', error);
     }
@@ -114,18 +142,13 @@ const StudentDashboard = () => {
 
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
-  
     const userId = localStorage.getItem('user_id');
-  
     if (!userId) {
       console.error('User ID not found in local storage.');
       return;
     }
-  
-    const url = `${API_URL}/students/profile/${userId}`;
-  
     try {
-      await axios.patch(url, profileData);
+      await axios.patch(`${API_URL}/students/profile/${userId}`, profileData);
       fetchProfile();
       setIsModalOpen('');
       setSuccessMessage('Profile updated successfully!');
@@ -166,18 +189,13 @@ const StudentDashboard = () => {
 
   const handleCreateProfile = async (e) => {
     e.preventDefault();
-  
     const userId = localStorage.getItem('user_id');
-  
     if (!userId) {
       console.error('User ID not found in local storage.');
       return;
     }
-  
-    const url = `${API_URL}/students/profile`;
-  
     try {
-      await axios.post(url, { ...profileData, user_id: userId });
+      await axios.post(`${API_URL}/students/profile`, { ...profileData, user_id: userId });
       fetchProfile();
       setIsModalOpen('');
       setSuccessMessage('Profile created successfully!');
@@ -189,7 +207,7 @@ const StudentDashboard = () => {
   const handleAddToWishlist = async (contentId) => {
     try {
       if (wishlist.find(item => item.content_id === contentId)) {
-        await axios.delete(`${API_URL}/students/wishlist/${contentId}`);
+        await axios.delete(`${API_URL}/students/wishlist/${userId}/${contentId}`);
         setWishlist(wishlist.filter(item => item.content_id !== contentId));
         setSuccessMessage('Removed from wishlist!');
       } else {
@@ -212,9 +230,10 @@ const StudentDashboard = () => {
         console.error('User ID is required to add a comment.');
         return;
       }
-      await axios.post(`${API_URL}/students/comments`, { content_id: contentId, user_id: userId, text: comments[contentId] });
-      fetchComments(contentId); // Refetch comments after adding
-      setComments({ ...comments, [contentId]: '' });
+      const commentText = comments[selectedContentId]?.text || '';
+      await axios.post(`${API_URL}/students/comments`, { content_id: contentId, user_id: userId, text: commentText });
+      fetchComments(contentId);
+      setComments(prev => ({ ...prev, [contentId]: '' }));
     } catch (error) {
       console.error('Failed to add comment:', error);
     }
@@ -228,41 +247,49 @@ const StudentDashboard = () => {
 
   return (
     <div className="dashboard">
-      {/* Sidebar */}
       <aside className="sidebar-left">
         <div className="profile-summary">
           <img 
-            src={profileData.profile_picture_url || 'default-avatar.jpg'} 
+            src={profileData.profile_picture_url || defaultProfilePictureUrl} 
             alt="Profile" 
             className="profile-pic" 
           />
           <h3>{profileData.username}</h3>
-          
           <button className="button-primary" onClick={() => setIsModalOpen('profile')}>Edit Profile</button>
           <button className="button-primary" onClick={() => setIsModalOpen('post')}>New Post</button>
+          
         </div>
         <div className="subscribed-categories">
           <h3>Subscribed Categories</h3>
-          <ul>
-            {userCategories.map(cat => (
-              <li key={cat.id}>{cat.name}</li>
-            ))}
-          </ul>
+          <section className="categories-list">
+            <h2>Categories</h2>
+            <ul>
+              {categories.map(cat => (
+                <li key={cat.id} className="category-item">
+                  {cat.name}
+                  <button
+                    className={`subscribe-btn ${userCategories.some(ucat => ucat.id === cat.id) ? 'subscribed' : ''}`}
+                    onClick={() => handleSubscribe(cat.id)}
+                  >
+                    {userCategories.some(ucat => ucat.id === cat.id) ? 'Unsubscribe' : 'Subscribe'}
+                  </button>
+
+                </li>
+              ))}
+            </ul>
+          </section>
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="main-content">
         <h1>Student Dashboard</h1>
 
-        {/* Success Message */}
         {successMessage && (
           <div className="success-message">
             {successMessage}
           </div>
         )}
 
-        {/* Profile Modal */}
         <Modal
           isOpen={isModalOpen === 'profile'}
           onRequestClose={() => setIsModalOpen('')}
@@ -318,7 +345,6 @@ const StudentDashboard = () => {
           </div>
         </Modal>
 
-        {/* Add Post Modal */}
         <Modal
           isOpen={isModalOpen === 'post'}
           onRequestClose={() => setIsModalOpen('')}
@@ -385,7 +411,6 @@ const StudentDashboard = () => {
           </div>
         </Modal>
 
-        {/* Comments Modal */}
         <Modal
           isOpen={isModalOpen === 'comments'}
           onRequestClose={() => setIsModalOpen('')}
@@ -405,7 +430,7 @@ const StudentDashboard = () => {
                   <input 
                     type="text" 
                     value={comments[selectedContentId]?.text || ''} 
-                    onChange={e => setComments({ ...comments, [selectedContentId]: { text: e.target.value } })}
+                    onChange={e => setComments(prev => ({ ...prev, [selectedContentId]: { text: e.target.value } }))}
                     placeholder="Add a comment"
                   />
                   <button 
@@ -415,10 +440,13 @@ const StudentDashboard = () => {
                     Add Comment
                   </button>
                   <ul>
-                    {/* Display Comments */}
-                    {comments[selectedContentId]?.map(comment => (
-                      <li key={comment.id}>{comment.text}</li>
-                    ))}
+                    {Array.isArray(comments[selectedContentId]) && comments[selectedContentId].length > 0 ? (
+                      comments[selectedContentId].map(comment => (
+                        <li key={comment.id}>{comment.text}</li>
+                      ))
+                    ) : (
+                      <li>No comments available</li>
+                    )}
                   </ul>
                 </div>
               </div>
@@ -426,7 +454,6 @@ const StudentDashboard = () => {
           </div>
         </Modal>
 
-        {/* Posts List */}
         <section className="posts-list">
           <h2>Posts</h2>
           <div className="posts-grid">
