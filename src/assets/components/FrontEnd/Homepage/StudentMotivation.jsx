@@ -64,7 +64,7 @@ const StudentMotivation = () => {
     let bodyData = {};
 
     if (modalType === 'signup') {
-      url = 'http://127.0.0.1:5000/auth/register'; // Replace with your Flask signup endpoint
+      url = 'https://motivation-ptatform-1.onrender.com/auth/register'; // Replace with your Flask signup endpoint
       bodyData = {
         username: formData.userName,
         email: formData.email,
@@ -72,7 +72,7 @@ const StudentMotivation = () => {
         role: formData.role
       };
     } else if (modalType === 'login') {
-      url = 'http://127.0.0.1:5000/auth/login'; // Replace with your Flask login endpoint
+      url = 'https://motivation-ptatform-1.onrender.com/auth/login'; // Replace with your Flask login endpoint
       bodyData = {
         email: formData.email,
         password: formData.password
