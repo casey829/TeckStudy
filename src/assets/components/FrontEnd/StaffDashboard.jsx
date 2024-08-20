@@ -178,7 +178,7 @@ function StaffDashboard() {
   useEffect(() => {
     const fetchContent = async () => {
       try {
-        const response = await fetch("http://localhost:5000/staff/content");
+        const response = await fetch("https://motivation-ptatform-1.onrender.com/staff/content");
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
         const data = await response.json();
         setContentList(data);
@@ -189,7 +189,7 @@ function StaffDashboard() {
 
     const fetchCategories = async () => {
       try {
-        const response = await fetch("http://localhost:5000/admin/categories");
+        const response = await fetch("https://motivation-ptatform-1.onrender.com/admin/categories");
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
         const data = await response.json();
         setCategories(data);
@@ -200,7 +200,7 @@ function StaffDashboard() {
 
     const fetchComments = async () => {
       try {
-        const response = await fetch("http://localhost:5000/staff/comments");
+        const response = await fetch("https://motivation-ptatform-1.onrender.com/staff/comments");
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
         const data = await response.json();
         setComments(data);
@@ -233,7 +233,7 @@ function StaffDashboard() {
     e.preventDefault();
     const userId = getUserId(); // Get the user ID from localStorage
     try {
-      const response = await handleRequest("http://localhost:5000/staff/content", 'POST', { ...contentData, created_by: userId });
+      const response = await handleRequest("https://motivation-ptatform-1.onrender.com/staff/content", 'POST', { ...contentData, created_by: userId });
       setContentList([...contentList, response]);
       toast.success("Content created successfully!");
       handleCloseModal();
@@ -247,7 +247,7 @@ function StaffDashboard() {
     e.preventDefault();
     const userId = getUserId(); // Get the user ID from localStorage
     try {
-      const response = await handleRequest(`http://localhost:5000/staff/content/${contentData.id}`, 'PATCH', { ...contentData, created_by: userId });
+      const response = await handleRequest(`https://motivation-ptatform-1.onrender.com/staff/content/${contentData.id}`, 'PATCH', { ...contentData, created_by: userId });
       setContentList(contentList.map(content => content.id === contentData.id ? response : content));
       toast.success("Content updated successfully!");
       handleCloseModal();
@@ -260,7 +260,7 @@ function StaffDashboard() {
 
   const handleApproveContent = async (contentId) => {
     try {
-      const response = await handleRequest(`http://localhost:5000/staff/content/${contentId}/approve`, 'PATCH', { approved_by: 'admin_user' });
+      const response = await handleRequest(`https://motivation-ptatform-1.onrender.com/staff/content/${contentId}/approve`, 'PATCH', { approved_by: 'admin_user' });
       setContentList(contentList.map(content => content.id === contentId ? response : content));
       toast.success("Content approved successfully!");
     } catch (error) {
@@ -272,7 +272,7 @@ function StaffDashboard() {
 
   const handleDeleteContent = async (contentId) => {
     try {
-      await handleRequest(`http://localhost:5000/staff/content/${contentId}`, 'DELETE');
+      await handleRequest(`https://motivation-ptatform-1.onrender.com/staff/content/${contentId}`, 'DELETE');
       setContentList(contentList.filter(content => content.id !== contentId));
       toast.success("Content deleted successfully!");
     } catch (error) {
@@ -283,7 +283,7 @@ function StaffDashboard() {
 
   const handleDeleteComment = async (commentId) => {
     try {
-      await handleRequest(`http://localhost:5000/staff/comments/${commentId}`, 'DELETE');
+      await handleRequest(`https://motivation-ptatform-1.onrender.com/staff/comments/${commentId}`, 'DELETE');
       setComments(comments.filter(comment => comment.id !== commentId));
       toast.success("Comment deleted successfully!");
     } catch (error) {
@@ -306,7 +306,7 @@ function StaffDashboard() {
     }
   
     try {
-      const response = await fetch(`http://localhost:5000/admin/content/${flaggedContentId}/flag`, {
+      const response = await fetch(`https://motivation-ptatform-1.onrender.com/admin/content/${flaggedContentId}/flag`, {
         method: 'PATCH', // Use PATCH method as specified
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason: flagReason }) // Send reason in the request body

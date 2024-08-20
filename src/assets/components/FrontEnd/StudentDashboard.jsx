@@ -4,7 +4,7 @@ import './StudentDashboard.css'; // Import custom styles
 import Modal from 'react-modal';
 import { FaHeart, FaRegHeart, FaRegCommentDots } from 'react-icons/fa';
 
-const API_URL = 'http://localhost:5000'; // Update with your backend URL
+const API_URL = 'https://motivation-ptatform-1.onrender.com'; // Update with your backend URL
 const defaultProfilePictureUrl = 'https://s.abcnews.com/images/Technology/AP_Sundar_Pichai_ml_150811_16x9_1600.jpg';
 
 Modal.setAppElement('#root');

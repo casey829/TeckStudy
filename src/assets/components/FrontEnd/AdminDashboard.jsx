@@ -54,7 +54,7 @@ function AdminDashboard() {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch('http://localhost:5000/admin/users');
+      const response = await fetch('https://motivation-ptatform-1.onrender.com/admin/users');
       const data = await response.json();
       setUsers(data);
     } catch (error) {
@@ -66,7 +66,7 @@ function AdminDashboard() {
 
   const fetchContent = async () => {
     try {
-      const response = await fetch('http://localhost:5000/admin/content');
+      const response = await fetch('https://motivation-ptatform-1.onrender.com/admin/content');
       const data = await response.json();
       setContentList(data);
     } catch (error) {
@@ -78,7 +78,7 @@ function AdminDashboard() {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch('http://localhost:5000/admin/categories');
+      const response = await fetch('https://motivation-ptatform-1.onrender.com/admin/categories');
       const data = await response.json();
       setCategories(data);
     } catch (error) {
@@ -88,7 +88,7 @@ function AdminDashboard() {
 
   const fetchAnalytics = async () => {
     try {
-      const response = await fetch('http://localhost:5000/admin/analytics');
+      const response = await fetch('https://motivation-ptatform-1.onrender.com/admin/analytics');
       const data = await response.json();
       setTotalUsers(data.totalUsers);
       setTotalStaff(data.totalStaff);
@@ -143,7 +143,7 @@ function AdminDashboard() {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/admin/users', {
+      const response = await fetch('https://motivation-ptatform-1.onrender.com/admin/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -174,7 +174,7 @@ function AdminDashboard() {
     
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/admin/content', {
+      const response = await fetch('https://motivation-ptatform-1.onrender.com/admin/content', {
         method: 'POST',
         body: formData
       });
@@ -195,7 +195,7 @@ function AdminDashboard() {
   const handleAddCategory = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('http://localhost:5000/admin/categories', {
+      const response = await fetch('https://motivation-ptatform-1.onrender.com/admin/categories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -220,7 +220,7 @@ function AdminDashboard() {
   const handleDeactivateUser = async (userId) => {
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:5000/admin/users/${userId}/deactivate`, {
+      const response = await fetch(`https://motivation-ptatform-1.onrender.com/admin/users/${userId}/deactivate`, {
         method: 'PATCH'
       });
       if (response.ok) {
@@ -239,7 +239,7 @@ function AdminDashboard() {
   const handleApproveContent = async (contentId) => {
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:5000/admin/content/${contentId}/approve`, {
+      const response = await fetch(`https://motivation-ptatform-1.onrender.com/admin/content/${contentId}/approve`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ approved_by: userId })
@@ -268,7 +268,7 @@ function AdminDashboard() {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:5000/admin/content/${contentId}/flag`, {
+      const response = await fetch(`https://motivation-ptatform-1.onrender.com/admin/content/${contentId}/flag`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason: flagReason })
@@ -291,7 +291,7 @@ function AdminDashboard() {
   const handleRemoveContent = async (contentId) => {
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:5000/staff/content/${contentId}`, {
+      const response = await fetch(`https://motivation-ptatform-1.onrender.com/staff/content/${contentId}`, {
         method: 'DELETE'
       });
       if (response.ok) {
